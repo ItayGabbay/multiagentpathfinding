@@ -12,20 +12,22 @@ from matplotlib.pyplot import figure
 # plot grid
 ##############################################################################
 
+
 # load the map file into numpy array
 with open('map_data.txt', 'rt') as infile:
     grid1 = np.array([list(line.strip()) for line in infile.readlines()])
 print('Grid shape', grid1.shape)
 
-grid1[grid1 == '@'] = 1
-grid1[grid1 == 'T'] = 1
-grid1[grid1 == '.'] = 0
+grid1[grid1 == '@'] = 1 #object on the map
+grid1[grid1 == 'T'] = 1 #object on the map
+grid1[grid1 == '.'] = 0 #free on map
 
 grid = np.array(grid1.astype(np.int))
 route = []
-num_of_agents = 5
-num_of_error = 5
-path_data = []
+num_of_agents = 3
+num_of_error = 7
+#path_data = []
+main_data = {}
 
 ####Plot The Map####
 fig, ax = plt.subplots(figsize=(9, 5))
@@ -60,30 +62,46 @@ def get_positions (lead_start, lead_goal):
 # path finding function
 ##############################################################################
 
-def astar(array, start, goal):
+def astar(array, start, goal, main_d, agent_num, err_num):
     neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
     close_set = set()
     came_from = {}
     gscore = {start: 0}
-
     fscore = {start: heuristic(start, goal)}
     oheap = []
-
     heapq.heappush(oheap, (fscore[start], start))
 
+    ##############################################
+    action_index = 0
+    agent_num = ('agent' + repr(agent_num))
+    pos_num = ('pos' + repr(action_index))
+    main_d[agent_num] = {}
+
+    # insert start point into main_data dict
+    main_d[agent_num][pos_num] = (goal), err_num
+    action_index = action_index + 1
+    pos_num = ('pos' + repr(action_index))
+    ##############################################
+
+
     while oheap:
-
         current = heapq.heappop(oheap)[1]
-
         if current == goal:
             data = []
-
             while current in came_from:
                 data.append(current)
                 current = came_from[current]
 
-            return data
+            #####################################
+                #insert data into main_data dict
+                main_d[agent_num][pos_num] = (current), err_num
+                action_index = action_index + 1
+                pos_num = ('pos' + repr(action_index))
+
+            #####################################
+
+            return grid, main_d
 
         close_set.add(current)
         for i, j in neighbors:
@@ -106,11 +124,17 @@ def astar(array, start, goal):
             if neighbor in close_set and tentative_g_score >= gscore.get(neighbor, 0):
                 continue
 
+            #Check collision on the current move
+            if array[neighbor[0]][neighbor[1]] == (action_index + 2):
+                print('Collision between next step - ', array[neighbor[0]][neighbor[1]], 'and', (action_index+2))
+                continue
+
             if tentative_g_score < gscore.get(neighbor, 0) or neighbor not in [i[1] for i in oheap]:
                 came_from[neighbor] = (current)
                 gscore[neighbor] = tentative_g_score
                 fscore[neighbor] = tentative_g_score + heuristic(neighbor, goal)
                 heapq.heappush(oheap, (fscore[neighbor], neighbor))
+
     return False
 
 ##############################################################################
@@ -124,8 +148,11 @@ lead_goal = (random.choice(np.argwhere(np.array(grid) == 0)))
 
 for x in range(0, num_of_agents):
 
+    #temp_path_data = {}
     #Get new Agent positions
     a_start, a_goal = get_positions(lead_start, lead_goal)
+
+
 
     start = (a_start[0], a_start[1])
     goal = (a_goal[0], a_goal[1])
@@ -133,17 +160,12 @@ for x in range(0, num_of_agents):
     ##############################################################################
     # Calling A*
     ##############################################################################
-    route = astar(grid, start, goal)
+    grid, main_data = astar(grid, start, goal, main_data, x, num_of_error)
 
-    if route:
-        route = route + [start]
-        route = route[::-1]
-        path_data.append(route)
-
-    if route:
+    if main_data:
         print('########## Agent No. - ', x, '##########')
         print('Start point - ', a_start, 'Goal point - ', a_goal)
-        print('Len of the route', len(route))
+        print('Len of the route', len(main_data['agent' + repr(x)]))
 
     ##############################################################################
     # plot the path
@@ -153,13 +175,14 @@ for x in range(0, num_of_agents):
     x_coords = []
     y_coords = []
 
-    if route:
-        for i in (range(0, len(route))):
-            x = route[i][0]
-            y = route[i][1]
+    if main_data:
+        for i in (range(0, len(main_data['agent' + repr(x)]))):
 
-            x_coords.append(x)
-            y_coords.append(y)
+            x1 = main_data['agent' + repr(x)]['pos' + repr(i)][0][0]
+            y1 = main_data['agent' + repr(x)]['pos' + repr(i)][0][1]
+
+            x_coords.append(x1)
+            y_coords.append(y1)
 
     # plot path
     ax.scatter(start[1], start[0], marker="*", color="green", s=50)
@@ -169,5 +192,4 @@ for x in range(0, num_of_agents):
     start = []
     goal = []
 
-print(path_data)
 plt.show()
