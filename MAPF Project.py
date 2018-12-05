@@ -23,10 +23,10 @@ grid1[grid1 == 'T'] = 1 #object on the map
 grid1[grid1 == '.'] = 0 #free on map
 
 grid = np.array(grid1.astype(np.int))
+grid[grid == 1] = -1
 route = []
 num_of_agents = 3
 num_of_error = 7
-#path_data = []
 main_data = {}
 
 ####Plot The Map####
@@ -111,8 +111,8 @@ def astar(array, start, goal, main_d, agent_num, err_num):
 
             if 0 <= neighbor[0] < array.shape[0]:
                 if 0 <= neighbor[1] < array.shape[1]:
-                    if array[neighbor[0]][neighbor[1]] == 1:
-                        # array bound 1 on map
+                    if array[neighbor[0]][neighbor[1]] == -1:
+                        # array bound -1 on map
                         continue
                 else:
                     # array bound y walls
@@ -180,6 +180,8 @@ for x in range(0, num_of_agents):
 
             x1 = main_data['agent' + repr(x)]['pos' + repr(i)][0][0]
             y1 = main_data['agent' + repr(x)]['pos' + repr(i)][0][1]
+
+            grid[x1][y1] = i
 
             x_coords.append(x1)
             y_coords.append(y1)
